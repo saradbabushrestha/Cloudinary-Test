@@ -1,15 +1,40 @@
-import { useState } from "react";
-import "./App.css";
-import Axios from "axios";
+import React, { useState } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import { setImageSelected, setUploadedImageId } from "./Redux/imageSlice";
 import { Image } from "cloudinary-react";
+import Axios from "axios";
 
 function App() {
-  const [imageSelected, setImageSelected] = useState("");
-  const [uploadedImageId, setUploadedImageId] = useState("");
+  const dispatch = useDispatch();
+  const { selectedImage, uploadedImageId } = useSelector(
+    (state) => state.image
+  );
+
+  const [imageSelectedLocal, setImageSelectedLocal] = useState(null);
+
+  const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      dispatch(
+        setImageSelected({
+          name: file.name,
+          size: file.size,
+          type: file.type,
+        })
+      );
+
+      setImageSelectedLocal(file);
+    }
+  };
 
   const uploadImage = () => {
+    if (!imageSelectedLocal) {
+      alert("Please select an image first!");
+      return;
+    }
+
     const formData = new FormData();
-    formData.append("file", imageSelected);
+    formData.append("file", imageSelectedLocal);
     formData.append("upload_preset", "CLouddd");
 
     Axios.post(
@@ -18,7 +43,7 @@ function App() {
     )
       .then((response) => {
         console.log("Image uploaded successfully:", response.data);
-        setUploadedImageId(response.data.public_id);
+        dispatch(setUploadedImageId(response.data.public_id));
       })
       .catch((error) => {
         console.error("Error uploading image:", error);
@@ -27,13 +52,16 @@ function App() {
 
   return (
     <div>
-      <input
-        type="file"
-        onChange={(event) => {
-          setImageSelected(event.target.files[0]);
-        }}
-      />
+      <input type="file" onChange={handleFileChange} />
       <button onClick={uploadImage}>Upload Image</button>
+
+      {selectedImage && (
+        <div>
+          <p>File Name: {selectedImage.name}</p>
+          <p>File Size: {(selectedImage.size / 1024).toFixed(2)} KB</p>
+          <p>File Type: {selectedImage.type}</p>
+        </div>
+      )}
 
       {uploadedImageId && (
         <Image
